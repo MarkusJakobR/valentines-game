@@ -36,8 +36,8 @@ local secondImageDelay = 5
 local shootSound = nil
 local killSounds = {}
 local currentKillSound = 1
-local bgMusic = nil
 local winMusic = nil
+local secondMusic = nil
 
 function love.load()
 	-- Window setup
@@ -58,6 +58,9 @@ function love.load()
 
 	shootSound = love.audio.newSource("sounds/gunshot.mp3", "static")
 	shootSound:setVolume(0.3)
+
+	winMusic = love.audio.newSource("sounds/yippee.mp3", "static")
+	secondMusic = love.audio.newSource("sounds/daddys-home.mp3", "static")
 
 	for i = 1, 5 do
 		killSounds[i] = love.audio.newSource("sounds/kill_" .. i .. ".mp3", "static")
@@ -119,11 +122,14 @@ end
 
 function love.update(dt)
 	if gameOver then
+		winMusic:play()
 		gameOverTimer = gameOverTimer + dt
 
 		-- Check if we should show second image
 		if gameOverTimer >= secondImageDelay then
 			showSecondImage = true
+			winMusic:stop()
+			secondMusic:play()
 		end
 
 		-- Animate the celebration GIF
