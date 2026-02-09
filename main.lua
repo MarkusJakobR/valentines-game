@@ -33,6 +33,12 @@ local showSecondImage = false
 local gameOverTimer = 0
 local secondImageDelay = 5
 
+local shootSound = nil
+local killSounds = {}
+local currentKillSound = 1
+local bgMusic = nil
+local winMusic = nil
+
 function love.load()
 	-- Window setup
 	love.window.setTitle("Aim Trainer")
@@ -49,6 +55,13 @@ function love.load()
 	end
 
 	secondImage = love.graphics.newImage("images/em_tulips.png")
+
+	shootSound = love.audio.newSource("sounds/gunshot.mp3", "static")
+	shootSound:setVolume(0.3)
+
+	for i = 1, 5 do
+		killSounds[i] = love.audio.newSource("sounds/kill_" .. i .. ".mp3", "static")
+	end
 
 	-- Spawn initial targets
 	for i = 1, maxTargets do
@@ -328,6 +341,9 @@ function love.mousepressed(x, y, button)
 		return
 	end
 
+	shootSound:stop()
+	shootSound:play()
+
 	-- Crosshair is always at screen center
 	local centerX = screenWidth / 2
 	local centerY = screenHeight / 2
@@ -343,6 +359,8 @@ function love.mousepressed(x, y, button)
 		local noDistance = math.sqrt((worldX - noButton.x) ^ 2 + (worldY - noButton.y) ^ 2)
 
 		if yesDistance < yesButton.size then
+			killSounds[5]:play()
+
 			gameOver = true
 			return
 		elseif noDistance < noButton.size then
@@ -357,6 +375,14 @@ function love.mousepressed(x, y, button)
 			local distance = math.sqrt((worldX - target.x) ^ 2 + (worldY - target.y) ^ 2)
 
 			if distance < target.size then
+				killSounds[currentKillSound]:stop()
+				killSounds[currentKillSound]:play()
+
+				currentKillSound = currentKillSound + 1
+				if currentKillSound > 5 then
+					currentKillSound = 1 -- Reset to 1 after 5
+				end
+
 				table.remove(targets, i)
 				score = score + 1
 				revealedLetters = revealedLetters + 1 -- Reveal next letter!
