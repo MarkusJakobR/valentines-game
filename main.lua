@@ -23,13 +23,32 @@ local revealedLetters = 0
 local yesButton = nil
 local noButton = nil
 
+local celebrationFrames = {}
+local currentFrame = 1
+local frameTimer = 0
+local frameDelay = 0.1
+
+local secondImage = nil
+local showSecondImage = false
+local gameOverTimer = 0
+local secondImageDelay = 5
+
 function love.load()
 	-- Window setup
-	love.window.setTitle("Valentine Shooter 💘")
+	love.window.setTitle("Aim Trainer")
 	love.window.setMode(screenWidth, screenHeight)
 	love.mouse.setVisible(false)
 	love.mouse.setGrabbed(true)
 	love.mouse.setRelativeMode(true)
+
+	-- Load celebration GIF frames
+	-- Change the number based on how many frames you have
+	for i = 1, 14 do -- If you have 10 frames
+		local frame = love.graphics.newImage("images/hachiware_gif/frame_" .. i .. " 2.png")
+		table.insert(celebrationFrames, frame)
+	end
+
+	secondImage = love.graphics.newImage("images/em_tulips.png")
 
 	-- Spawn initial targets
 	for i = 1, maxTargets do
@@ -87,6 +106,22 @@ end
 
 function love.update(dt)
 	if gameOver then
+		gameOverTimer = gameOverTimer + dt
+
+		-- Check if we should show second image
+		if gameOverTimer >= secondImageDelay then
+			showSecondImage = true
+		end
+
+		-- Animate the celebration GIF
+		frameTimer = frameTimer + dt
+		if frameTimer >= frameDelay then
+			frameTimer = 0
+			currentFrame = currentFrame + 1
+			if currentFrame > #celebrationFrames then
+				currentFrame = 1 -- Loop the animation
+			end
+		end
 		return
 	end
 
@@ -168,11 +203,25 @@ function love.draw()
 	love.graphics.setBackgroundColor(0.1, 0.1, 0.15)
 
 	if gameOver then
-		-- Victory screen
+		if showSecondImage then
+			-- Draw second image (replace the GIF)
+			love.graphics.setColor(1, 1, 1)
+			local x = (screenWidth - secondImage:getWidth()) / 2
+			local y = (screenHeight - secondImage:getHeight()) / 2
+			love.graphics.draw(secondImage, x, y)
+		else
+			if #celebrationFrames > 0 then
+				local gif = celebrationFrames[currentFrame]
+				-- Center the image
+				local x = (screenWidth - gif:getWidth()) / 2
+				local y = (screenHeight - gif:getHeight()) / 2
+				love.graphics.setColor(1, 1, 1)
+				love.graphics.draw(gif, x, y)
+			end
+		end
+		-- Draw the celebration GIF
 		love.graphics.setColor(1, 1, 1)
-		love.graphics.printf("🎉 SHE SAID YES! 🎉", 0, 200, screenWidth, "center")
-		love.graphics.printf(message, 0, 250, screenWidth, "center")
-		love.graphics.printf("❤️❤️❤️", 0, 300, screenWidth, "center")
+		love.graphics.printf("My pookie said yes!!!", 0, 500, screenWidth, "center")
 	else
 		love.graphics.push()
 
