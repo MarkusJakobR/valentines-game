@@ -1,6 +1,7 @@
 -- Game state
 local score = 0
 local gameOver = false
+local showingChoice = false
 local targets = {}
 local maxTargets = 5
 local targetSize = 30
@@ -14,6 +15,13 @@ local screenHeight = 600
 local cameraRange = 400 -- How far camera can move from origin
 local worldWidth = screenWidth + (cameraRange * 2)
 local worldHeight = screenHeight + (cameraRange * 2)
+
+-- Message to reveal
+local message = "WILL YOU BE MY VALENTINE?"
+local revealedLetters = 0
+
+local yesButton = nil
+local noButton = nil
 
 function love.load()
 	-- Window setup
@@ -48,8 +56,74 @@ function spawnTarget()
 	table.insert(targets, target)
 end
 
+function createChoiceButtons()
+	-- Create YES and NO buttons in reachable area
+	local minX = screenWidth / 2
+	local maxX = (worldWidth - screenWidth) + screenWidth / 2
+	local minY = screenHeight / 2
+	local maxY = (worldHeight - screenHeight) + screenHeight / 2
+
+	local centerX = (minX + maxX) / 2
+	local centerY = (minY + maxY) / 2
+
+	yesButton = {
+		x = centerX - 150,
+		y = centerY,
+		size = 80,
+		text = "YES",
+		vx = math.random(-80, 80), -- Random velocity!
+		vy = math.random(-80, 80),
+	}
+
+	noButton = {
+		x = centerX + 150,
+		y = centerY,
+		size = 80,
+		text = "NO",
+		vx = math.random(-120, 120), -- Faster movement (harder to hit)
+		vy = math.random(-120, 120),
+	}
+end
+
 function love.update(dt)
 	if gameOver then
+		return
+	end
+
+	if showingChoice then
+		-- Move YES and NO buttons
+		yesButton.x = yesButton.x + yesButton.vx * dt
+		yesButton.y = yesButton.y + yesButton.vy * dt
+
+		noButton.x = noButton.x + noButton.vx * dt
+		noButton.y = noButton.y + noButton.vy * dt
+
+		-- Bounce off reachable bounds
+		local minX = screenWidth / 2
+		local maxX = (worldWidth - screenWidth) + screenWidth / 2
+		local minY = screenHeight / 2
+		local maxY = (worldHeight - screenHeight) + screenHeight / 2
+
+		-- YES button bounce
+		if yesButton.x <= minX or yesButton.x >= maxX then
+			yesButton.vx = -yesButton.vx
+			yesButton.x = math.max(minX, math.min(yesButton.x, maxX))
+		end
+		if yesButton.y <= minY or yesButton.y >= maxY then
+			yesButton.vy = -yesButton.vy
+			yesButton.y = math.max(minY, math.min(yesButton.y, maxY))
+		end
+
+		-- NO button bounce
+		if noButton.x <= minX or noButton.x >= maxX then
+			noButton.vx = -noButton.vx
+			noButton.x = math.max(minX, math.min(noButton.x, maxX))
+		end
+		if noButton.y <= minY or noButton.y >= maxY then
+			noButton.vy = -noButton.vy
+			noButton.y = math.max(minY, math.min(noButton.y, maxY))
+		end
+
 		return
 	end
 
@@ -96,9 +170,9 @@ function love.draw()
 	if gameOver then
 		-- Victory screen
 		love.graphics.setColor(1, 1, 1)
-		love.graphics.printf("🎉 YOU WIN! 🎉", 0, 200, screenWidth, "center")
-		love.graphics.printf("Will you be my Valentine? 💝", 0, 250, screenWidth, "center")
-		love.graphics.printf("Score: " .. score, 0, 300, screenWidth, "center")
+		love.graphics.printf("🎉 SHE SAID YES! 🎉", 0, 200, screenWidth, "center")
+		love.graphics.printf(message, 0, 250, screenWidth, "center")
+		love.graphics.printf("❤️❤️❤️", 0, 300, screenWidth, "center")
 	else
 		love.graphics.push()
 
@@ -121,21 +195,70 @@ function love.draw()
 		love.graphics.setColor(0, 1, 0) -- Green = reachable zone
 		love.graphics.rectangle("line", minX, minY, maxX - minX, maxY - minY)
 
-		-- Draw targets (hearts)
-		for i, target in ipairs(targets) do
-			love.graphics.setColor(1, 0.2, 0.4)
-			love.graphics.circle("fill", target.x, target.y, target.size)
-			love.graphics.setColor(1, 0, 0.3)
-			love.graphics.circle("fill", target.x - 10, target.y - 5, 15)
-			love.graphics.circle("fill", target.x + 10, target.y - 5, 15)
+		if showingChoice then
+			-- Draw YES/NO buttons
+			local font = love.graphics.newFont(32)
+			love.graphics.setFont(font)
+
+			-- YES button (green)
+			love.graphics.setColor(0.2, 0.8, 0.3)
+			love.graphics.circle("fill", yesButton.x, yesButton.y, yesButton.size)
+			love.graphics.setColor(1, 1, 1)
+			local yesWidth = font:getWidth(yesButton.text)
+			love.graphics.print(yesButton.text, yesButton.x - yesWidth / 2, yesButton.y - 16)
+
+			-- NO button (red)
+			love.graphics.setColor(0.8, 0.2, 0.2)
+			love.graphics.circle("fill", noButton.x, noButton.y, noButton.size)
+			love.graphics.setColor(1, 1, 1)
+			local noWidth = font:getWidth(noButton.text)
+			love.graphics.print(noButton.text, noButton.x - noWidth / 2, noButton.y - 16)
+		else
+			-- Draw targets (hearts)
+			for i, target in ipairs(targets) do
+				love.graphics.setColor(1, 0.2, 0.4)
+				love.graphics.circle("fill", target.x, target.y, target.size)
+				love.graphics.setColor(1, 0, 0.3)
+				love.graphics.circle("fill", target.x - 10, target.y - 5, 15)
+				love.graphics.circle("fill", target.x + 10, target.y - 5, 15)
+			end
 		end
 
 		love.graphics.pop()
 
-		-- Draw score
+		-- Draw revealed message at the top
 		love.graphics.setColor(1, 1, 1)
-		love.graphics.print("Score: " .. score .. " / 20", 10, 10)
-		love.graphics.print("Move mouse to aim", 10, 30)
+		love.graphics.setFont(love.graphics.newFont(32))
+
+		-- Show revealed portion of message
+		local revealed = string.sub(message, 1, revealedLetters)
+		local remaining = string.sub(message, revealedLetters + 1)
+
+		-- Center the text
+		local fullWidth = love.graphics.getFont():getWidth(message)
+		local startX = (screenWidth - fullWidth) / 2
+
+		-- Draw revealed letters (white)
+		love.graphics.setColor(1, 1, 1)
+		love.graphics.print(revealed, startX, 50)
+
+		-- Draw remaining letters (dark/hidden)
+		local revealedWidth = love.graphics.getFont():getWidth(revealed)
+		love.graphics.setColor(1, 1, 1, 0)
+		love.graphics.print(remaining, startX + revealedWidth, 50)
+
+		-- Reset font for other UI
+		love.graphics.setFont(love.graphics.newFont(12))
+
+		-- Draw score
+		if not showingChoice then
+			love.graphics.setColor(1, 1, 1)
+			love.graphics.print("Score: " .. score .. " / " .. string.len(message), 10, 10)
+			love.graphics.print("Move mouse to aim", 10, 30)
+		else
+			love.graphics.setColor(1, 1, 1)
+			love.graphics.print("Shoot your answer!", 10, 10)
+		end
 
 		-- Draw crosshair
 		local centerX = screenWidth / 2
@@ -165,21 +288,41 @@ function love.mousepressed(x, y, button)
 	local worldY = centerY + cameraY
 
 	-- Check if we hit any target
-	for i = #targets, 1, -1 do
-		local target = targets[i]
-		local distance = math.sqrt((worldX - target.x) ^ 2 + (worldY - target.y) ^ 2)
+	if showingChoice then
+		-- Check if YES or NO was hit
+		local yesDistance = math.sqrt((worldX - yesButton.x) ^ 2 + (worldY - yesButton.y) ^ 2)
+		local noDistance = math.sqrt((worldX - noButton.x) ^ 2 + (worldY - noButton.y) ^ 2)
 
-		if distance < target.size then
-			table.remove(targets, i)
-			score = score + 1
+		if yesDistance < yesButton.size then
+			gameOver = true
+			return
+		elseif noDistance < noButton.size then
+			-- Make NO button run away or do something funny
+			love.window.showMessageBox("Oops!", "Wrong button! Try again 😊", "info")
+			return
+		end
+	else
+		-- Check if we hit any target
+		for i = #targets, 1, -1 do
+			local target = targets[i]
+			local distance = math.sqrt((worldX - target.x) ^ 2 + (worldY - target.y) ^ 2)
 
-			if score >= 20 then
-				gameOver = true
-				return
+			if distance < target.size then
+				table.remove(targets, i)
+				score = score + 1
+				revealedLetters = revealedLetters + 1 -- Reveal next letter!
+
+				-- Check if message is complete
+				if revealedLetters >= string.len(message) then
+					showingChoice = true
+					targets = {} -- Clear all targets
+					createChoiceButtons()
+					return
+				end
+
+				spawnTarget()
+				break
 			end
-
-			spawnTarget()
-			break
 		end
 	end
 end
